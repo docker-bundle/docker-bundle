@@ -158,14 +158,22 @@ def install_from_git(package_name, package_path, target_path):
     file_name = package_name + '-' + md5(package_path) + '.bundle'
     download_dir = os.path.join(config_path, packages_dir)
     download_path = os.path.join(download_dir, file_name)
+    success = False
+    if os.path.isdir(download_path):
+        if 0 == os.system('cd "%s" && git pull -f'%download_path):
+            success = True
+        else:
+            try:
+                shutil.rmtree(download_path)
+            except:
+                pass
     if not os.path.isdir(download_path):
-        if os.system("git clone --depth 1 \"%s\" \"%s\""%(package_path, download_path)) != 0 or not os.path.isdir(download_path):
-            print('[ERROR]      Clone \'%s\' failed.'%package_path)
-            return None
-    else:
-        if 0 != os.system('cd "%s" && git pull -f'%download_path):
-            print('[ERROR]      Fetch \'%s\' failed.'%package_path)
-            return None
+        if 0 == os.system("git clone --depth 1 \"%s\" \"%s\""%(package_path, download_path)):
+            success = True
+
+    if not success:
+        print('[ERROR]      Pull \'%s\' failed.'%package_path)
+        return None
 
     return install_from_dir(download_path, target_path)
 
