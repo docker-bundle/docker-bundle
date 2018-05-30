@@ -98,7 +98,9 @@ def upgrade(user_call_update = False, update_with_ask = True):
 
     if int(update_version_number) <= version_number:
         if user_call_update:
+            print('-'*80)
             print('     %s is newest version.'%exe_name)
+            print('-'*80)
         return
 
     is_ask_for_upgrade = update_mode == 'ask'
@@ -528,10 +530,12 @@ def environment(args = []):
 
 def action_upgrade(args = []):
     upgrade(True)
+    exit()
 
 
 def action_upgrade_directly(args = []):
     upgrade(True, False)
+    exit()
 
 #------------------------------------------------------------------------
 
