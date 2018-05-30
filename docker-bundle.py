@@ -9,21 +9,37 @@ import urllib.request
 import hashlib
 import tarfile
 import re
-import traceback
 
 exe_name = 'docker-bundle'
 project_name = 'Docker-bundle'
 bundle_install_dir = 'docker'
 bundles_dir = 'bundles'
-version_code = '0.0.1'
+version_code = '0.1.0'
+version_number = 1
 
 #------------------------------------------------------------------------
 
 config_path = os.path.expanduser(os.path.join('~', '.' + exe_name))
 file_source_list = 'sources.list'
+file_config = 'config.json'
 source_list_file_path = os.path.join(config_path, file_source_list)
+config_file_path = os.path.join(config_path, file_config)
 packages_dir = 'packages'
-default_source = 'https://docker-bundle.github.io/bundles.json'
+default_source = 'https://docker-bundle.github.io/v1/bundles.json'
+upgrade_info_url = 'https://docker-bundle.github.io/v1/update.json'
+
+config = {
+    # <version_number>: skip a version update
+    # 'all': don't update
+    'skip_version_number': '',
+    'upgrade_info_url': upgrade_info_url,
+}
+
+def write_config(config):
+    f = open(config_file_path, 'w')
+    f.write(json.dumps(config, indent=2))
+    f.flush()
+    f.close()
 
 def init_config_file():
     try:
@@ -37,9 +53,104 @@ def init_config_file():
             sources_list.flush()
             sources_list.close()
     except:
-        print('[WARNING] Initial config file failed.')
+        print('[WARNING] Load sources list failed.')
+    try:
+        if not os.path.isfile(config_file_path):
+            write_config(config)
+        else:
+            config.update(json.loads(open(config_file_path).read()))
+    except:
+        print('[WARNING] Load config file failed.')
 
-init_config_file()
+#------------------------------------------------------------------------
+
+def upgrade(user_call_update = False, update_with_ask = True):
+    skip_version_number = config['skip_version_number']
+    if not user_call_update and skip_version_number.lower() == 'all':
+        return
+
+    update_info = {
+        # must have
+        'url': '',
+        'hash': '',
+        'version_code': version_code,
+        'version_number': version_number,
+
+        # option
+
+        # ask: ask for update
+        # silent: silent update
+        'mode': 'normal',
+    }
+    try:
+        update_info.update(json.loads(urllib.request.urlopen(config['upgrade_info_url']).read()))
+    except:
+        return
+
+    update_url = update_info['url']
+    update_hash = update_info['hash']
+    update_version_code = update_info['version_code']
+    update_version_number = update_info['version_number']
+    update_mode = update_info['mode'].lower()
+
+    if '' == update_url or '' == update_hash or '' == update_version_code:
+        return
+
+    if int(update_version_number) <= version_number:
+        if user_call_update:
+            print('     %s is newest version.'%exe_name)
+        return
+
+    is_ask_for_upgrade = update_mode == 'ask'
+    is_silent_upgrade = update_mode == 'silent'
+
+    if not user_call_update and not is_silent_upgrade\
+        and not is_ask_for_upgrade\
+        and skip_version_number >= str(update_version_number):
+        return
+
+    if not is_silent_upgrade and (is_ask_for_upgrade or update_with_ask):
+        answer = input(
+"""--------------------------------------------------------------------------------
+    A newly version (%s) of %s is available. Upgrade?
+            [Y]= Yes
+            [N]= Not now
+            [S]= Skip this version
+            [D]= Disable upgrade
+--------------------------------------------------------------------------------
+    Answer: [Y]: """%(update_version_code,exe_name))[:1].upper()
+        print()
+
+        if answer == 'N':
+            return
+        elif answer == 'D':
+            config['skip_version_number'] = 'all'
+            write_config(config)
+            return
+        elif answer == 'S':
+            config['skip_version_number'] = str(update_version_number)
+            write_config(config)
+            return
+    try:
+        new_exe = urllib.request.urlopen(update_url).read()
+
+        if md5(new_exe) != update_hash:
+            if user_call_update or is_ask_for_upgrade:
+                print('[FAILED]         Upgrade data hash error!')
+            return
+
+        f = open(__file__,'wb')
+        f.write(new_exe)
+        f.flush()
+        f.close()
+        if user_call_update or is_ask_for_upgrade:
+            print('='*80)
+            print('         %s (%s) is up to date in your next command.'%(project_name, update_version_code))
+            print('='*80)
+    except:
+        if user_call_update or is_ask_for_upgrade:
+            print('[FAILED]         upgrade:',sys.exc_info()[1])
+            return
 
 #------------------------------------------------------------------------
 
@@ -116,8 +227,10 @@ def load_packages(sources = []):
 #------------------------------------------------------------------------
 # install
 
-def md5(str):
-    return hashlib.md5(str.encode()).hexdigest()
+def md5(data):
+    if type(data) == str:
+        data = data.encode()
+    return hashlib.md5(data).hexdigest()
 
 def install_from_dir(package_path, target_path):
     try:
@@ -167,7 +280,7 @@ def install_from_git(package_name, package_path, target_path):
                 shutil.rmtree(download_path)
             except:
                 pass
-    if not os.path.isdir(download_path):
+    if not success and not os.path.isdir(download_path):
         if 0 == os.system("git clone --depth 1 \"%s\" \"%s\""%(package_path, download_path)):
             success = True
 
@@ -234,6 +347,7 @@ Description:
         result = install_from_package(bundle_name, bundle_name, target_path)
     else:
         print('[INFO]       Fetching source list...')
+        upgrade()
         packages = load_packages(use_sources)
 
         if bundle_name not in packages:
@@ -301,6 +415,7 @@ Options:
             search_help()
             exit()
 
+    upgrade()
     packages = load_packages(use_sources)
     if use_regex:
         re_keyword = re.compile(keyword)
@@ -374,9 +489,11 @@ Usage:
     %(name)s [options] [COMMAND] [ARGS...]
 
 Options:
-    %(name)s -h|--help
-    %(name)s -v|--version
-    %(name)s -e|--environment <ENV>
+    -h|--help
+    -v|--version
+    -e|--environment <ENV>                  Set environment variables to commands
+       --check-upgrade                      Check self upgrade before action
+       --upgrade                            Do self upgrade directly (without ask) if upgrade available
 
 Commands:"""%{'name': exe_name, 'project_name': project_name})
     for name, action in base_actions.items():
@@ -391,7 +508,15 @@ Commands:"""%{'name': exe_name, 'project_name': project_name})
     exit()
 
 def version(args = []):
-    print(version_code)
+    f = open(__file__)
+    file_hash = md5(f.read())
+    f.close()
+    version_info = {
+        'version_code': version_code,
+        'version_number': version_number,
+        'hash': file_hash,
+    }
+    print(json.dumps(version_info, indent=2))
     exit()
 
 def environment(args = []):
@@ -401,9 +526,17 @@ def environment(args = []):
         k,v = a[:2]
         os.environ[k] = v
 
+def action_upgrade(args = []):
+    upgrade(True)
+
+
+def action_upgrade_directly(args = []):
+    upgrade(True, False)
+
 #------------------------------------------------------------------------
 
 # command call actions
+
 base_actions = {
         'install': {
             'desc': 'Install bundle here',
@@ -436,6 +569,8 @@ def init_actions_bundles():
 #------------------------------------------------------------------------
 
 def main():
+    init_config_file()
+
     options = {
         '-h': help,
         '--help': help,
@@ -443,9 +578,11 @@ def main():
         '--version': version,
         '-e': environment,
         '--environment': environment,
+        '--check-upgrade': action_upgrade,
+        '--upgrade': action_upgrade_directly,
     }
 
-    opts, args = getopt.getopt(sys.argv[1:], 'hve:', ['help', 'version', 'environment='])
+    opts, args = getopt.getopt(sys.argv[1:], 'hve:', ['help', 'version', 'environment=', 'check-upgrade', 'upgrade'])
 
     for opt in opts:
         options[opt[0]]([opt[1]])
@@ -459,7 +596,7 @@ def main():
     action = args[0]
 
     if action not in actions:
-        print("%s: '%s' not found."%(exe_name, action))
+        print("%s: command '%s' not found."%(exe_name, action))
         return
     try:
         actions[action]['action'](args[1:])
