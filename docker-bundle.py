@@ -25,8 +25,8 @@ file_config = 'config.json'
 source_list_file_path = os.path.join(config_path, file_source_list)
 config_file_path = os.path.join(config_path, file_config)
 packages_dir = 'packages'
-default_source = 'https://docker-bundle.github.io/v1/bundles.json'
-upgrade_info_url = 'https://docker-bundle.github.io/v1/update.json'
+default_source = 'https://docker-bundle.github.io/bundles.json'
+upgrade_info_url = 'https://docker-bundle.github.io/update.json'
 
 config = {
     # <version_number>: skip a version update
@@ -269,13 +269,13 @@ def install_from_url(package_name, package_path, target_path):
         print('[ERROR]      Download \'%s\' failed, %s.'%package_path, sys.exc_info()[1])
     return None
 
-def install_from_git(package_name, package_path, target_path):
+def install_from_git(package_name, package_path, target_path, branch = 'master'):
     file_name = package_name + '-' + md5(package_path) + '.bundle'
     download_dir = os.path.join(config_path, packages_dir)
     download_path = os.path.join(download_dir, file_name)
     success = False
     if os.path.isdir(download_path):
-        if 0 == os.system('cd "%s" && git pull -f'%download_path):
+        if 0 == os.system('cd "%s" && git checkout %s && git pull -f'%(download_path, branch)):
             success = True
         else:
             try:
@@ -283,7 +283,7 @@ def install_from_git(package_name, package_path, target_path):
             except:
                 pass
     if not success and not os.path.isdir(download_path):
-        if 0 == os.system("git clone --depth 1 \"%s\" \"%s\""%(package_path, download_path)):
+        if 0 == os.system("git clone --depth 1 \"%s\" \"%s\" -b %s"%(package_path, download_path, branch)):
             success = True
 
     if not success:
@@ -293,9 +293,6 @@ def install_from_git(package_name, package_path, target_path):
     return install_from_dir(download_path, target_path)
 
 def install_from_package(package_name, package_path, target_path):
-    git_suffix = '.git'
-    if package_path.rfind(git_suffix) == len(package_path) - len(git_suffix):
-        return install_from_git(package_name, package_path, target_path)
     if package_path.find('http://') == 0 or package_path.find('https://') == 0:
         return install_from_url(package_name, package_path, target_path)
     elif os.path.isdir(package_path):
@@ -357,10 +354,17 @@ Description:
             return
 
         print('[INFO]       Bundle: ' + bundle_name)
+
         package_info = packages[bundle_name]
-        package_url = package_info['url']
+        package_type = package_info.get('type')
+        package_url = package_info.get('url')
+
         print('[INFO]       Package: ' + package_url)
-        result = install_from_package(bundle_name, package_url, target_path)
+
+        if package_type == 'git':
+            result = install_from_git(bundle_name, package_url, target_path, package_info.get('branch', 'master'))
+        elif not package_type:
+            result = install_from_package(bundle_name, package_url, target_path)
 
     if not result:
         print('[ERROR]      Install bundle failed..')
