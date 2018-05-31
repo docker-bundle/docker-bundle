@@ -1,6 +1,6 @@
 # Docker Bundle
 ### Docker-bundles manager, installer.
-
+* Require [Docker](https://docs.docker.com/install/)
 * Automatically install, build running and publishing programs in docker.
 *  Best choice For **Lazy**, **Silly** and **Impatient** Developer
 
@@ -51,9 +51,11 @@ Usage:
     docker-bundle [options] [COMMAND] [ARGS...]
 
 Options:
-    docker-bundle -h|--help
-    docker-bundle -v|--version
-    docker-bundle -e|--environment <ENV>
+    -h|--help
+    -v|--version
+    -e|--environment <ENV>                  Set environment variables to commands
+       --check-upgrade                      Check self upgrade before action
+       --upgrade                            Do self upgrade directly (without ask) if upgrade available
 
 Commands:
     install                       Install bundle here
@@ -207,15 +209,16 @@ Usage:
     docker-bundle [options] [COMMAND] [ARGS...]
 
 Options:
-    docker-bundle -h|--help
-    docker-bundle -v|--version
-    docker-bundle -e|--environment <ENV>
+    -h|--help
+    -v|--version
+    -e|--environment <ENV>                  Set environment variables to commands
+       --check-upgrade                      Check self upgrade before action
+       --upgrade                            Do self upgrade directly (without ask) if upgrade available
 
 Commands:
     install                       Install bundle here
     search                        Search for bundle you want
     source                        Manage sources
-
 C:\User\Xiaohong\>
 ```
 It's seems work!  Next she follow ***Xiaoming*** 's steps create and runing her first Rails project on Windows.
