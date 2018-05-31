@@ -132,7 +132,7 @@ default: &default
   ...
 ------------------------------------------------------------------------------
 ```
-His rails project seem to be created. Docker-bundle hint him to cofigure database connection.   
+His rails project seem to be created. Docker-bundle hint him to configure database connection.   
 Follow the hint, he copy 
 ```
   username: postgres
@@ -175,7 +175,7 @@ Rails-on-docker is waiting for him on http://0.0.0.0:3000
 
 ***XiaoHong*** is silly programmer. She can only work on Windows.  
 She need learn Rails which seems hard to work on Windows.  
-So he choose docker-bundle (**Have no choice**).   
+So she choose docker-bundle (**Have no choice**).   
 
 Soon she found, the installation command
 ```
@@ -183,7 +183,7 @@ curl -L https://docker-bundle.github.io/install.sh | bash
 ```
 seems not working on Windows.  
 
-FInally she goes to [Docker-bundle-wrapper](https://github.com/docker-bundle/docker-bundle-wrapper), which could run docker-bundle wrapper in docker environment, can help her run docker-bundle on windows.   
+Finally she goes to [Docker-bundle-wrapper](https://github.com/docker-bundle/docker-bundle-wrapper), which could run docker-bundle wrapper in docker environment, can help her run docker-bundle on windows.   
 
 Follow the `README.md` of   [Docker-bundle-wrapper](https://github.com/docker-bundle/docker-bundle-wrapper), she create a bat file  named as `docker-bundlew.bat` (with magic code inside) , which serve as `docker-bundle` command on windows.
 
