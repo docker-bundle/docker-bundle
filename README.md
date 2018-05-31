@@ -84,14 +84,14 @@ Please input your project name [bitcoin_rails]:[Enter]
 Bundle Commands:
     rails:new                     Create new rails project here in docker
     rails:sync                    Install depends, Migrate db
-    rails:seed                    Migrate and Run seed
+    rails:seed                    Install depends, migrate db and run seed
     rails:c                       Rails console
     rails:build                   Build static assets (for staging/production environments)
     rails:db:drop                 Drop database (only available development/staging environments)
     env:init                      Initial Project Env Config
     run                           Run a command with a container
     exec                          Exec a command in container
-    shell                         Shell
+    shell                         Open a Shell into container, if container not start, use `run bash`
     logs                          Show logs
     up                            Create && start server
     down                          Stop && remove  server
