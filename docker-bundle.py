@@ -177,7 +177,7 @@ def load_sub_bundle():
         bundles.update(bundle.load_bundles())
         global is_installed
         is_installed = True
-    except ModuleNotFoundError:
+    except ImportError:
         pass
     sys.path = bak_path
     return bundles
