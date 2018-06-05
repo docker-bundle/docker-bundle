@@ -173,12 +173,13 @@ def load_sub_bundle():
     bundles = {}
     try:
         import bundle
+    except ImportError:
+        pass
+    else:
         os.chdir(os.path.dirname(bundle.__file__))
         bundles.update(bundle.load_bundles())
         global is_installed
         is_installed = True
-    except ImportError:
-        pass
     sys.path = bak_path
     return bundles
 
