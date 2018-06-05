@@ -169,7 +169,7 @@ def load_sub_bundle():
             break
         current_path = parent_path
     bak_path = sys.path
-    sys.path = paths
+    sys.path = paths + sys.path
     bundles = {}
     try:
         import bundle
@@ -569,8 +569,6 @@ def init_actions_bundles():
 
     bundles.update(load_sub_bundle())
 
-    bundles.update(load_bundles())
-
     actions.update(bundles)
 
 
@@ -618,4 +616,3 @@ if __name__=='__main__':
         pass
     except getopt.GetoptError:
         print(exe_name, ':',sys.exc_info()[1])
-
