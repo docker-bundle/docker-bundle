@@ -1,6 +1,7 @@
 # Docker Bundle
 ### Docker-bundles manager, installer.
 * Require [Docker](https://docs.docker.com/install/)
+* Require [Docker-compose](https://pypi.org/project/docker-compose/) (pip3 install docker-compose)
 * Automatically install, build running and publishing programs in docker.
 *  Best choice For **Lazy**, **Silly** and **Impatient** Developer
 
