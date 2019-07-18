@@ -197,8 +197,7 @@ def load_sub_bundle():
 # import from '__file__/bundles_dir'
 
 
-def load_bundles(bundle_dir_path=os.path.join(
-        os.path.dirname(__file__), bundles_dir)):
+def load_bundles(bundle_dir_path=os.path.join(os.path.dirname(__file__), bundles_dir)):
     bundles = {}
     try:
         bundle_names = list(map(
@@ -210,16 +209,36 @@ def load_bundles(bundle_dir_path=os.path.join(
         for bundle in bundle_names:
             module = __import__(bundle)
             if 'actions' in dir(module):
-                bundles.update(__import__(bundle).actions)
+                bundles.update(module.actions)
     return bundles
 
-# ------------------------------------------------------------------------
+BUNDLE_INSTALLED = '__bundle_installed__'
+BUNDLE_MESSAGE = '__bundle_message__'
+_bundle_handler = {}
 
+def handle_actions(actions):
+    global _bundle_handler
+    if BUNDLE_INSTALLED in actions:
+        _bundle_handler[BUNDLE_INSTALLED] = actions[BUNDLE_INSTALLED]
+        del actions[BUNDLE_INSTALLED]
+    if BUNDLE_MESSAGE in actions:
+        _bundle_handler[BUNDLE_MESSAGE] = actions[BUNDLE_MESSAGE]
+        del actions[BUNDLE_MESSAGE]
+    return actions
+
+def bundle_message(actions):
+    if BUNDLE_MESSAGE in _bundle_handler and _bundle_handler[BUNDLE_MESSAGE](actions):
+        return
+    print('Bundle Commands:')
+    for name, action in actions.items():
+        print("    %-30s%s" % (name, action.get('desc', '')))
+    print()
+
+# ------------------------------------------------------------------------
 
 def load_source():
     return set(filter(lambda x: x != '', map(
         lambda x: x.strip(), open(source_list_file_path).readlines())))
-
 
 def write_source(sources):
     f = open(source_list_file_path, 'w')
@@ -227,7 +246,6 @@ def write_source(sources):
         f.write(source + '\n')
     f.flush()
     f.close()
-
 
 def load_packages(sources=[]):
     try:
@@ -248,12 +266,10 @@ def load_packages(sources=[]):
 # ------------------------------------------------------------------------
 # install
 
-
 def md5(data):
     if isinstance(data, str):
         data = data.encode()
     return hashlib.md5(data).hexdigest()
-
 
 def install_from_dir(package_path, target_path):
     try:
@@ -268,7 +284,6 @@ def install_from_dir(package_path, target_path):
             package_path, sys.exc_info()[1])
         return None
 
-
 def install_from_tarfile(package_path, target_path):
     try:
         t = tarfile.open(package_path, "r:gz")
@@ -277,7 +292,6 @@ def install_from_tarfile(package_path, target_path):
     except BaseException:
         print('[ERROR]      Package illegal.')
         return None
-
 
 def install_from_url(package_name, package_path, target_path):
     file_name = package_name + '-' + md5(package_path) + '.bundle'
@@ -299,7 +313,6 @@ def install_from_url(package_name, package_path, target_path):
             package_path,
             sys.exc_info()[1])
     return None
-
 
 def install_from_git(package_name, package_path, target_path, branch='master'):
     file_name = package_name + '-' + md5(package_path) + '.bundle'
@@ -326,7 +339,6 @@ def install_from_git(package_name, package_path, target_path, branch='master'):
 
     return install_from_dir(download_path, target_path)
 
-
 def install_from_package(package_name, package_path, target_path):
     if package_path.find('http://') == 0 or package_path.find('https://') == 0:
         return install_from_url(package_name, package_path, target_path)
@@ -339,7 +351,6 @@ def install_from_package(package_name, package_path, target_path):
             '[ERROR]      Can\'t find package \'%s\' in \'%s\'' %
             (package_name, package_path))
         return None
-
 
 def install(argv=[]):
     def install_help():
@@ -424,11 +435,10 @@ Description:
 
     print('[OK]         Install bundle success.')
 
-    loaded_actions = load_bundles(os.path.join(target_path, bundles_dir))
-    print('You get new Bundle Commands:')
-    for name, action in loaded_actions.items():
-        print("    %-30s%s" % (name, action['desc']))
-    print()
+    loaded_actions = handle_actions(load_bundles(os.path.join(target_path, bundles_dir)))
+    if BUNDLE_INSTALLED in _bundle_handler and _bundle_handler[BUNDLE_INSTALLED](loaded_actions):
+        return
+    bundle_message(loaded_actions)
 
 # ------------------------------------------------------------------------
 # search
@@ -486,7 +496,7 @@ Options:
     for name, info in packages.items():
         desc = ''
         if 'desc' in info:
-            desc = info['desc']
+            desc = info.get('desc', '')
         if check(name) or not name_only and check(desc):
             print("%-40s%s" % (name, desc))
 
@@ -537,8 +547,7 @@ Options:
 # import finish
 # ------------------------------------------------------------------------
 
-
-def help(args=[]):
+def help_message(args=[]):
     print(
         """
     %(project_name)s
@@ -549,22 +558,21 @@ Usage:
 Options:
     -h|--help
     -v|--version
-    -e|--environment <ENV>                  Set environment variables to commands
+    -e|--environment <ENV, ENV=VALUE>                  Set environment variables to commands
        --check-upgrade                      Check self upgrade before action
        --upgrade                            Do self upgrade directly (without ask) if upgrade available
 
 Commands:""" % {'name': exe_name, 'project_name': project_name})
     for name, action in base_actions.items():
-        print("    %-30s%s" % (name, action['desc']))
+        print("    %-30s%s" % (name, action.get('desc', '')))
     print()
-    init_actions_bundles()
-    if len(bundles) > 0:
-        print("Bundle Commands:")
-        for name, action in bundles.items():
-            print("    %-30s%s" % (name, action['desc']))
-        print()
     exit()
 
+def show_info(args=[]):
+    if len(bundles) == 0:
+        help_message()
+        return
+    bundle_message(bundles)
 
 def version(args=[]):
     f = open(__file__)
@@ -624,7 +632,7 @@ bundles = {}
 def init_actions_bundles():
     actions.update(base_actions.copy())
 
-    bundles.update(load_sub_bundle())
+    bundles.update(handle_actions(load_sub_bundle()))
 
     actions.update(bundles)
 
@@ -635,8 +643,8 @@ def main():
     init_config_file()
 
     options = {
-        '-h': help,
-        '--help': help,
+        '-h': help_message,
+        '--help': help_message,
         '-v': version,
         '--version': version,
         '-e': environment,
@@ -651,11 +659,11 @@ def main():
     for opt in opts:
         options[opt[0]]([opt[1]])
 
-    if len(args) == 0:
-        help()
-        return
-
     init_actions_bundles()
+
+    if len(args) == 0:
+        show_info()
+        return
 
     action = args[0]
 
